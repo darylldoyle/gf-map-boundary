@@ -268,7 +268,7 @@ add_action( 'gform_loaded', function () {
 			}
 
 			public function get_form_editor_field_settings() {
-				return [ 'label_setting', 'description_setting', 'error_message_setting', 'required_setting', 'visibility_setting' ];
+				return [ 'label_setting', 'description_setting', 'error_message_setting', 'rules_setting', 'visibility_setting' ];
 			}
 
 			public function get_form_editor_button() {
@@ -290,11 +290,13 @@ add_action( 'gform_loaded', function () {
 				$input_name = 'input_' . $field_id;
 
 				// Hidden input to carry the encoded polygon path.
+				$required_attr = $this->isRequired ? " aria-required='true' data-required='true'" : " aria-required='false'";
 				$hidden_input = sprintf(
-					"<input type='hidden' name='%s' id='input_%s' value='%s' class='gfmb-encoded-path' />",
+					"<input type='hidden' name='%s' id='input_%s' value='%s' class='gfmb-encoded-path'%s />",
 					esc_attr( $input_name ),
 					esc_attr( $input_id ),
-					esc_attr( $value )
+					esc_attr( $value ),
+					$required_attr
 				);
 
 				// Postcode input and controls.
@@ -336,9 +338,9 @@ add_action( 'gform_loaded', function () {
 
 			public function validate( $value, $form ) {
 				parent::validate( $value, $form );
-				if ( $this->isRequired && rgblank( $value ) ) {
-					$this->failed_validation  = true;
-					$this->validation_message = esc_html__( 'Please draw a boundary on the map.', 'gf-map-boundary' );
+				// Use Gravity Forms built-in required handling for consistency with other fields.
+				if ( $this->isRequired && $this->is_value_submission_empty( rgar( $form, 'id' ) ) ) {
+					$this->set_required_error( $value );
 				}
 			}
 
