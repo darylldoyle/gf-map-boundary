@@ -543,13 +543,76 @@ add_filter( 'gform_entry_post_save', function ( $entry, $form ) {
 		// Store the image URL as the field value.
 		GFAPI::update_entry_field( (int) $entry['id'], (int) $field_id, $fileurl );
 		$entry[ $field_id ] = $fileurl;
+
+		// Save center lat/lng and zoom as entry meta and provide a Google Maps link (interactive).
+		$posted_center_lat = isset( $_POST[ 'input_' . $field_id . '_center_lat' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'input_' . $field_id . '_center_lat' ] ) ) : '';
+		$posted_center_lng = isset( $_POST[ 'input_' . $field_id . '_center_lng' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'input_' . $field_id . '_center_lng' ] ) ) : '';
+		$posted_zoom       = isset( $_POST[ 'input_' . $field_id . '_zoom' ] )       ? sanitize_text_field( wp_unslash( $_POST[ 'input_' . $field_id . '_zoom' ] ) )       : '';
+
+		$save_center_lat = isset( $center_lat ) ? $center_lat : ( $posted_center_lat !== '' ? (float) $posted_center_lat : '' );
+		$save_center_lng = isset( $center_lng ) ? $center_lng : ( $posted_center_lng !== '' ? (float) $posted_center_lng : '' );
+		$save_zoom       = isset( $zoom ) && $zoom !== null ? (int) $zoom : ( $posted_zoom !== '' ? (int) $posted_zoom : '' );
+
+		$entry_id = (int) $entry['id'];
+		if ( $save_center_lat !== '' && $save_center_lng !== '' ) {
+			gform_update_meta( $entry_id, 'gfmb_' . $field_id . '_center_lat', (string) $save_center_lat );
+			gform_update_meta( $entry_id, 'gfmb_' . $field_id . '_center_lng', (string) $save_center_lng );
+		}
+		if ( $save_zoom !== '' ) {
+			gform_update_meta( $entry_id, 'gfmb_' . $field_id . '_zoom', (string) $save_zoom );
+		}
+		// Build an interactive Google Maps link if we have center and zoom.
+		if ( $save_center_lat !== '' && $save_center_lng !== '' ) {
+			$z = $save_zoom !== '' ? (int) $save_zoom : 15;
+			$gmaps_link = sprintf( 'https://www.google.com/maps/@%s,%s,%sz', rawurlencode( (string) $save_center_lat ), rawurlencode( (string) $save_center_lng ), rawurlencode( (string) $z ) );
+			gform_update_meta( $entry_id, 'gfmb_' . $field_id . '_gmaps_link', $gmaps_link );
+		}
 	}
 
 	return $entry;
 }, 10, 2 );
 
 // -----------------------------------------------------------------------------
-// Render image in emails (merge tags) and admin entry detail
+// Register entry meta keys for center/zoom and Google Maps link (for display/export)
+// -----------------------------------------------------------------------------
+
+add_filter( 'gform_entry_meta', function( $entry_meta, $form_id ) {
+	$form = GFAPI::get_form( $form_id );
+	if ( ! $form || empty( $form['fields'] ) ) {
+		return $entry_meta;
+	}
+	foreach ( $form['fields'] as $field ) {
+		if ( ! isset( $field->type ) || $field->type !== 'map_boundary' ) {
+			continue;
+		}
+		$field_label = is_string( $field->label ) && $field->label !== '' ? $field->label : sprintf( __( 'Field %d', 'gf-map-boundary' ), (int) $field->id );
+		$fid = (string) $field->id;
+		$entry_meta[ 'gfmb_' . $fid . '_center_lat' ] = [
+			'label'             => sprintf( __( '%s – Center Latitude', 'gf-map-boundary' ), $field_label ),
+			'is_numeric'        => true,
+			'is_default_column' => false,
+		];
+		$entry_meta[ 'gfmb_' . $fid . '_center_lng' ] = [
+			'label'             => sprintf( __( '%s – Center Longitude', 'gf-map-boundary' ), $field_label ),
+			'is_numeric'        => true,
+			'is_default_column' => false,
+		];
+		$entry_meta[ 'gfmb_' . $fid . '_zoom' ] = [
+			'label'             => sprintf( __( '%s – Map Zoom', 'gf-map-boundary' ), $field_label ),
+			'is_numeric'        => true,
+			'is_default_column' => false,
+		];
+		$entry_meta[ 'gfmb_' . $fid . '_gmaps_link' ] = [
+			'label'             => sprintf( __( '%s – Google Maps Link', 'gf-map-boundary' ), $field_label ),
+			'is_numeric'        => false,
+			'is_default_column' => false,
+		];
+	}
+	return $entry_meta;
+}, 10, 2 );
+
+// -----------------------------------------------------------------------------
+// Render image & details in emails (merge tags) and admin entry detail
 // -----------------------------------------------------------------------------
 
 add_filter( 'gform_merge_tag_filter', function ( ...$args ) {
@@ -568,11 +631,80 @@ add_filter( 'gform_merge_tag_filter', function ( ...$args ) {
 	$esc_html   = $args[9] ?? null;
 	$nl2br      = $args[10] ?? null;
 
-	if ( $field instanceof GF_Field && $field->type === 'map_boundary' ) {
+ if ( $field instanceof GF_Field && $field->type === 'map_boundary' ) {
 		$url = is_string( $raw_value ) ? trim( $raw_value ) : '';
+		$entry_id = ( is_array( $entry ) && isset( $entry['id'] ) ) ? (int) $entry['id'] : 0;
+		$center_lat = $entry_id ? gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_center_lat' ) : '';
+		$center_lng = $entry_id ? gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_center_lng' ) : '';
+		$zoom       = $entry_id ? gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_zoom' )       : '';
+		$gmaps_link = $entry_id ? gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_gmaps_link' ) : '';
+
 		if ( $format === 'html' && $url && filter_var( $url, FILTER_VALIDATE_URL ) ) {
-			return sprintf( '<img src="%s" alt="%s" style="max-width:100%%;height:auto;border:1px solid #e5e5e5;" />', esc_url( $url ), esc_attr( $field->label ) );
+			$img_html = sprintf( '<img src="%s" alt="%s" style="max-width:100%%;height:auto;border:1px solid #e5e5e5;" />', esc_url( $url ), esc_attr( $field->label ) );
+			$details  = '';
+			if ( $center_lat !== '' && $center_lng !== '' ) {
+				$lat_disp = is_numeric( $center_lat ) ? number_format( (float) $center_lat, 6, '.', '' ) : esc_html( (string) $center_lat );
+				$lng_disp = is_numeric( $center_lng ) ? number_format( (float) $center_lng, 6, '.', '' ) : esc_html( (string) $center_lng );
+				$zoom_disp = $zoom !== '' ? sprintf( ' (z%s)', esc_html( (string) $zoom ) ) : '';
+				$details .= sprintf( '<div style="margin-top:6px;">%s %s, %s%s</div>', esc_html__( 'Center:', 'gf-map-boundary' ), esc_html( $lat_disp ), esc_html( $lng_disp ), $zoom_disp );
+			}
+			if ( is_string( $gmaps_link ) && $gmaps_link !== '' ) {
+				$details .= sprintf( '<div style="margin-top:4px;"><a href="%s" target="_blank" rel="noopener noreferrer">%s</a></div>', esc_url( $gmaps_link ), esc_html__( 'Open in Google Maps', 'gf-map-boundary' ) );
+			}
+			return $img_html . $details;
+		}
+
+		// For non-HTML formats (e.g., plain text emails), append details inline.
+		if ( $format !== 'html' ) {
+			$parts = array();
+			if ( $value ) { $parts[] = (string) $value; }
+			$center_txt = '';
+			if ( $center_lat !== '' && $center_lng !== '' ) {
+				$center_txt = sprintf( 'Center: %s,%s', (string) $center_lat, (string) $center_lng );
+				if ( $zoom !== '' ) { $center_txt .= sprintf( ' (z%s)', (string) $zoom ); }
+				$parts[] = $center_txt;
+			}
+			if ( is_string( $gmaps_link ) && $gmaps_link !== '' ) {
+				$parts[] = 'Google Maps: ' . $gmaps_link;
+			}
+			if ( ! empty( $parts ) ) {
+				return implode( ' | ', $parts );
+			}
 		}
 	}
 	return $value;
 }, 10, 11 );
+
+// Enhance admin entry detail: append center lat/lng and link below the field value
+add_filter( 'gform_entry_field_value', function( ...$args ) {
+	$value = $args[0] ?? '';
+	$field = $args[1] ?? null;
+	$entry = $args[2] ?? null;
+	$form  = $args[3] ?? null;
+
+	if ( ! ( $field instanceof GF_Field ) || $field->type !== 'map_boundary' ) {
+		return $value;
+	}
+
+	$entry_id = ( is_array( $entry ) && isset( $entry['id'] ) ) ? (int) $entry['id'] : 0;
+	if ( ! $entry_id ) {
+		return $value;
+	}
+
+	$center_lat = gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_center_lat' );
+	$center_lng = gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_center_lng' );
+	$zoom       = gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_zoom' );
+	$gmaps_link = gform_get_meta( $entry_id, 'gfmb_' . $field->id . '_gmaps_link' );
+
+	$details = '';
+	if ( $center_lat !== '' && $center_lng !== '' ) {
+		$lat_disp = is_numeric( $center_lat ) ? number_format( (float) $center_lat, 6, '.', '' ) : esc_html( (string) $center_lat );
+		$lng_disp = is_numeric( $center_lng ) ? number_format( (float) $center_lng, 6, '.', '' ) : esc_html( (string) $center_lng );
+		$details .= sprintf( '<div style="margin-top:6px;">%s %s, %s</div>', esc_html__( 'Center:', 'gf-map-boundary' ), esc_html( $lat_disp ), esc_html( $lng_disp ) );
+	}
+	if ( is_string( $gmaps_link ) && $gmaps_link !== '' ) {
+		$details .= sprintf( '<div style="margin-top:4px;"><a href="%s" target="_blank" rel="noopener noreferrer">%s</a></div>', esc_url( $gmaps_link ), esc_html__( 'Open in Google Maps', 'gf-map-boundary' ) );
+	}
+
+	return $value . $details;
+}, 10, 4 );
