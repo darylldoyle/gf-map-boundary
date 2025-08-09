@@ -4,7 +4,10 @@
 
 ## 1. TL;DR
 
-This plugin extends Gravity Forms by adding a custom field type that allows users to input their postcode, view a map, and draw a polygon boundary around a specific location. Upon submission, the drawn shape is saved as a static image (minimum 1000px wide) and included with the form entry. The plugin also features a settings page to store the Google Maps API key at a global level. Future versions will support additional map providers such as Mapbox.
+This plugin extends Gravity Forms by adding a custom field type that allows users to input their postcode, view a map,
+and draw a polygon boundary around a specific location. Upon submission, the drawn shape is saved as a static image (
+minimum 1000px wide) and included with the form entry. The plugin also features a settings page to store the Google Maps
+API key at a global level. Future versions will support additional map providers such as Mapbox.
 
 ---
 
@@ -33,7 +36,7 @@ This plugin extends Gravity Forms by adding a custom field type that allows user
 ## 3. User Stories
 
 | Persona             | User Story                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------ |
+|---------------------|--------------------------------------------------------------------------------------------------------|
 | Form Submitter      | As a user, I want to enter my postcode and draw a boundary on a map so I can define my property area.  |
 | Form Submitter      | As a user, I want the ability to undo or edit my boundary if I make a mistake.                         |
 | Admin/Form Builder  | As a Gravity Forms admin, I want to add a map drawing field to my form so I can collect boundary data. |
@@ -47,7 +50,7 @@ This plugin extends Gravity Forms by adding a custom field type that allows user
 ### 📌 Core Features
 
 | Feature                      | Description                                                            | Priority |
-| ---------------------------- | ---------------------------------------------------------------------- | -------- |
+|------------------------------|------------------------------------------------------------------------|----------|
 | Custom GF Field Type         | A new Gravity Forms field type: "Map Drawing"                          | High     |
 | Postcode-Based Map Centering | Centers map on user-entered postcode (uses Google Maps geocoding API)  | High     |
 | Polygon Drawing Tool         | User can draw lines to create a closed polygon                         | High     |
@@ -75,7 +78,11 @@ This plugin extends Gravity Forms by adding a custom field type that allows user
 
 ## 6. Narrative
 
-John is applying for a permit using a form on a local council website. He needs to show the area on his property where construction will take place. Using the "Draw Area on Map" field, he enters his postcode, waits for the map to load, and then traces the boundary of the proposed construction area using intuitive drawing tools. If he makes a mistake, he undoes the last point. Once satisfied, he submits the form. The admin receives the form entry with a clear, high-resolution image showing the exact area John marked.
+John is applying for a permit using a form on a local council website. He needs to show the area on his property where
+construction will take place. Using the "Draw Area on Map" field, he enters his postcode, waits for the map to load, and
+then traces the boundary of the proposed construction area using intuitive drawing tools. If he makes a mistake, he
+undoes the last point. Once satisfied, he submits the form. The admin receives the form entry with a clear,
+high-resolution image showing the exact area John marked.
 
 ---
 
@@ -95,7 +102,7 @@ John is applying for a permit using a form on a local council website. He needs 
 ## 8. Success Metrics
 
 | Metric                          | Target Value/Behavior                          |
-| ------------------------------- | ---------------------------------------------- |
+|---------------------------------|------------------------------------------------|
 | Plugin Field Adoption Rate      | >25% of forms using the plugin within 3 months |
 | Average Rendering Time          | <2 seconds to load and render map + draw tools |
 | Image Generation Reliability    | >99% of submissions include attached image     |
