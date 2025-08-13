@@ -1,8 +1,10 @@
 <?php
 /**
- * Plugin Name:       GF Map Boundary
- * Description:       Adds a Gravity Forms field to draw a polygon on Google Maps and saves a static image with the
- * entry. Version:           0.1.0 Author:            darylldoyle License:           GPL-2.0-or-later License URI:
+ * Plugin Name: GF Map Boundary
+ * Description: Adds a Gravity Forms field to draw a polygon on Google Maps and saves a static image with the entry.
+ * Version: 0.1.0
+ * Author: darylldoyle
+ * License: GPL-2.0-or-later License URI:
  *  https://www.gnu.org/licenses/gpl-2.0.html Text Domain:       gf-map-boundary
  */
 
